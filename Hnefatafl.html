@@ -1,0 +1,893 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Hnefatafl</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+<style>
+/* Layout: one centered column. Title, setup bar, variant note, status strip, board with rank and file labels, undo row, rules drawer. */
+:root {
+  --display: 'Uncial Antiqua', 'Palatino Linotype', Georgia, serif;
+  --body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --bg: #e8ecee;
+  --fg: #1b2428;
+  --muted: #526167;
+  --panel: #f4f7f8;
+  --panel-line: #c3cdd1;
+  --board: #b9c5c9;
+  --line: #8a9aa0;
+  --frame: #46575e;
+  --restricted: #9aa9ae;
+  --rune: #566870;
+  --goal: rgba(214, 164, 25, 0.24);
+  --att: #a3262a;
+  --att-rim: #3d0b0d;
+  --att-boss: #f0c4be;
+  --def: #fbf8ee;
+  --def-rim: #2b3a42;
+  --king: #e0aa14;
+  --king-rim: #5e4303;
+  --king-ink: #2e2100;
+  --accent: #1f5f8b;
+  --accent-ink: #ffffff;
+  --hint: rgba(31, 95, 139, 0.6);
+  --last: rgba(31, 95, 139, 0.18);
+  --focus: #1f5f8b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1518;
+    --fg: #e3eaec;
+    --muted: #94a5ab;
+    --panel: #172127;
+    --panel-line: #2b3b43;
+    --board: #1d2a30;
+    --line: #34484f;
+    --frame: #3f555e;
+    --restricted: #142026;
+    --rune: #4f6a74;
+    --goal: rgba(224, 176, 32, 0.14);
+    --att: #d1403a;
+    --att-rim: #ffd2cc;
+    --att-boss: #5a1412;
+    --def: #f1ecdc;
+    --def-rim: #1a252b;
+    --king: #efbd22;
+    --king-rim: #fff3c4;
+    --king-ink: #2e2100;
+    --accent: #6fb3e0;
+    --accent-ink: #06121a;
+    --hint: rgba(111, 179, 224, 0.65);
+    --last: rgba(111, 179, 224, 0.16);
+    --focus: #6fb3e0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1518;
+  --fg: #e3eaec;
+  --muted: #94a5ab;
+  --panel: #172127;
+  --panel-line: #2b3b43;
+  --board: #1d2a30;
+  --line: #34484f;
+  --frame: #3f555e;
+  --restricted: #142026;
+  --rune: #4f6a74;
+  --goal: rgba(224, 176, 32, 0.14);
+  --att: #d1403a;
+  --att-rim: #ffd2cc;
+  --att-boss: #5a1412;
+  --def: #f1ecdc;
+  --def-rim: #1a252b;
+  --king: #efbd22;
+  --king-rim: #fff3c4;
+  --king-ink: #2e2100;
+  --accent: #6fb3e0;
+  --accent-ink: #06121a;
+  --hint: rgba(111, 179, 224, 0.65);
+  --last: rgba(111, 179, 224, 0.16);
+  --focus: #6fb3e0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 var(--body);
+}
+main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+header h1 {
+  margin: 0;
+  font: 400 clamp(2rem, 7vw, 2.9rem)/1.05 var(--display);
+  letter-spacing: 0.02em;
+  text-wrap: balance;
+}
+header p { margin: 6px 0 0; color: var(--muted); }
+
+/* setup bar */
+.setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 20px;
+}
+fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+.sel {
+  font: 500 0.92rem var(--body);
+  padding: 8px 12px;
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--fg);
+  min-height: 38px;
+}
+.sel:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.segrow {
+  display: inline-flex;
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.segrow input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.segrow label {
+  padding: 8px 13px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.92rem;
+  border-right: 1px solid var(--panel-line);
+  user-select: none;
+}
+.segrow label:last-of-type { border-right: 0; }
+.segrow input:checked + label {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.segrow input:focus-visible + label {
+  outline: 2px solid var(--focus);
+  outline-offset: -3px;
+}
+button.btn {
+  font: 600 0.92rem var(--body);
+  padding: 9px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-line);
+  background: var(--panel);
+  color: var(--fg);
+  cursor: pointer;
+}
+button.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+button.btn:disabled { opacity: 0.45; cursor: default; }
+button.btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.note { margin: -4px 0 0; color: var(--muted); font-size: 0.9rem; }
+
+/* piece artwork, shared by board pieces and legend icons */
+.att svg polygon { fill: var(--att); stroke: var(--att-rim); stroke-width: 7; stroke-linejoin: round; }
+.att svg .in { fill: var(--att-boss); stroke: none; }
+.def svg circle { fill: var(--def); stroke: var(--def-rim); stroke-width: 7; }
+.def svg .in { fill: none; stroke: var(--def-rim); stroke-width: 7; }
+.king svg circle { fill: var(--king); stroke: var(--king-rim); stroke-width: 7; }
+.king svg g { fill: var(--king-ink); }
+.pc svg, .mini svg { display: block; width: 100%; height: 100%; }
+.mini { display: inline-block; width: 20px; height: 20px; flex: none; }
+
+/* status strip */
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.status.over { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.turn { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.turn .mini { width: 30px; height: 30px; }
+#statusMain { font-weight: 600; font-size: 1.02rem; }
+#statusSub { color: var(--muted); font-size: 0.88rem; min-height: 1.3em; }
+.tally { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 0.88rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tally span { display: inline-flex; align-items: center; gap: 6px; }
+.tally b { color: var(--fg); }
+
+/* board */
+.boardwrap {
+  display: grid;
+  grid-template-columns: 1.5em minmax(0, 1fr);
+  grid-template-rows: auto 1.6em;
+}
+.ranks, .files {
+  display: grid;
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ranks { grid-template-rows: repeat(var(--n, 11), 1fr); }
+.files { grid-template-columns: repeat(var(--n, 11), 1fr); grid-column: 2; }
+.ranks span, .files span { display: grid; place-items: center; }
+.ranks span { padding-right: 4px; }
+.board {
+  display: grid;
+  grid-template: repeat(var(--n, 11), 1fr) / repeat(var(--n, 11), 1fr);
+  aspect-ratio: 1;
+  background: var(--board);
+  border: 3px solid var(--frame);
+  border-radius: 6px;
+}
+.cell {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 0.5px var(--line);
+  -webkit-tap-highlight-color: transparent;
+}
+.cell:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; z-index: 3; }
+.cell.goal { background: var(--goal); }
+.cell.corner {
+  background:
+    linear-gradient(45deg, transparent 45%, var(--rune) 46% 54%, transparent 55%),
+    linear-gradient(-45deg, transparent 45%, var(--rune) 46% 54%, transparent 55%),
+    var(--restricted);
+}
+.cell.throne {
+  background:
+    radial-gradient(circle, transparent 34%, var(--rune) 35% 41%, transparent 42%),
+    var(--restricted);
+}
+.cell.last::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--last);
+}
+.cell.sel { box-shadow: inset 0 0 0 3px var(--accent); }
+.cell.open { box-shadow: inset 0 0 0 3px var(--king); }
+.cell.hint::after {
+  content: "";
+  position: absolute;
+  inset: 36%;
+  border-radius: 50%;
+  background: var(--hint);
+  z-index: 2;
+  pointer-events: none;
+}
+.pc {
+  position: absolute;
+  inset: 7%;
+  z-index: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4));
+}
+.pc.king { inset: 2%; }
+.pc.moved { animation: settle 0.22s ease-out; }
+@keyframes settle {
+  from { transform: scale(1.18); }
+  to { transform: scale(1); }
+}
+.board.over .cell { cursor: default; }
+.board.busy .cell { cursor: progress; }
+@media (prefers-reduced-motion: reduce) {
+  .pc.moved { animation: none; }
+}
+
+.under { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+#lastMove { color: var(--muted); font-size: 0.88rem; min-height: 1.3em; }
+
+details.rules {
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: var(--panel);
+  padding: 4px 14px;
+}
+details.rules summary { cursor: pointer; font-weight: 600; padding: 10px 0; }
+details.rules summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+details.rules ul { margin: 0 0 12px; padding-left: 1.2em; display: flex; flex-direction: column; gap: 6px; }
+details.rules p { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; }
+</style>
+
+<main>
+  <header>
+    <h1>Hnefatafl</h1>
+    <p>The Viking game of kings, in four rulesets.</p>
+  </header>
+
+  <form class="setup" id="setup" onsubmit="return false">
+    <fieldset>
+      <legend><label for="variant">Variant</label></legend>
+      <select class="sel" id="variant"></select>
+    </fieldset>
+    <fieldset>
+      <legend>Opponent</legend>
+      <div class="segrow">
+        <input type="radio" name="mode" id="mode-ai" value="ai" checked><label for="mode-ai">Computer</label>
+        <input type="radio" name="mode" id="mode-two" value="two"><label for="mode-two">Second player</label>
+      </div>
+    </fieldset>
+    <fieldset id="fs-side">
+      <legend>You play</legend>
+      <div class="segrow">
+        <input type="radio" name="side" id="side-att" value="1" checked><label for="side-att">Attackers</label>
+        <input type="radio" name="side" id="side-def" value="2"><label for="side-def">Defenders</label>
+      </div>
+    </fieldset>
+    <fieldset id="fs-level">
+      <legend>Strength</legend>
+      <div class="segrow">
+        <input type="radio" name="level" id="lv-easy" value="easy"><label for="lv-easy">Easy</label>
+        <input type="radio" name="level" id="lv-med" value="medium" checked><label for="lv-med">Medium</label>
+        <input type="radio" name="level" id="lv-hard" value="hard"><label for="lv-hard">Hard</label>
+      </div>
+    </fieldset>
+    <button type="button" class="btn primary" id="newgame">New game</button>
+  </form>
+  <p class="note" id="variantNote"></p>
+
+  <section class="status" id="statusBox" aria-live="polite">
+    <div class="turn">
+      <span class="mini att" id="turnIcon"></span>
+      <div>
+        <div id="statusMain"></div>
+        <div id="statusSub"></div>
+      </div>
+    </div>
+    <div class="tally" id="tally"></div>
+  </section>
+
+  <div class="boardwrap" id="boardwrap">
+    <div class="ranks" id="ranks" aria-hidden="true"></div>
+    <div class="board" id="board" role="group" aria-label="Hnefatafl board"></div>
+    <div class="files" id="files" aria-hidden="true"></div>
+  </div>
+
+  <div class="under">
+    <div id="lastMove"></div>
+    <button type="button" class="btn" id="undo">Undo move</button>
+  </div>
+
+  <details class="rules">
+    <summary>How this variant works</summary>
+    <ul id="rulesList"></ul>
+    <p id="rulesNote"></p>
+  </details>
+</main>
+
+<script>
+// ==ENGINE-START==
+const Tafl = (function () {
+  const ATT = 1, DEF = 2, KING = 3;
+  const DR = [-1, 1, 0, 0], DC = [0, 0, -1, 1];
+  const WIN = 100000;
+  const LEVELS = {
+    easy:   { depth: 1, noise: 350, ms: 400 },
+    medium: { depth: 2, noise: 30,  ms: 1200 },
+    hard:   { depth: 4, noise: 0,   ms: 2400 }
+  };
+  const TIMEOUT = { timeout: true };
+
+  const L11 = (function () {
+    const att = [], def = [];
+    for (let i = 3; i <= 7; i++) att.push([0, i], [10, i], [i, 0], [i, 10]);
+    att.push([1, 5], [9, 5], [5, 1], [5, 9]);
+    [[3,5],[4,4],[4,5],[4,6],[5,3],[5,4],[5,6],[5,7],[6,4],[6,5],[6,6],[7,5]].forEach(function (p) { def.push(p); });
+    return { att: att, def: def };
+  })();
+  const VARIANTS = {
+    copenhagen: {
+      label: 'Copenhagen', n: 11, escape: 'corner', kingCapture: 'four', att: L11.att, def: L11.def,
+      blurb: 'The modern tournament standard and the most widely played. The king runs for a corner.'
+    },
+    brandubh: {
+      label: 'Brandubh', n: 7, escape: 'corner', kingCapture: 'two',
+      att: [[0,3],[1,3],[5,3],[6,3],[3,0],[3,1],[3,5],[3,6]],
+      def: [[2,3],[4,3],[3,2],[3,4]],
+      blurb: 'Small and quick, from Ireland. The king runs for a corner and two attackers can take him away from the throne.'
+    },
+    tablut: {
+      label: 'Tablut', n: 9, escape: 'edge', kingCapture: 'two',
+      att: [[0,3],[0,4],[0,5],[1,4],[8,3],[8,4],[8,5],[7,4],[3,0],[4,0],[5,0],[4,1],[3,8],[4,8],[5,8],[4,7]],
+      def: [[2,4],[3,4],[5,4],[6,4],[4,2],[4,3],[4,5],[4,6]],
+      blurb: 'The Sami game recorded by Linnaeus in 1732. The king runs for any edge.'
+    },
+    tawlbwrdd: {
+      label: 'Tawlbwrdd', n: 11, escape: 'edge', kingCapture: 'two', att: L11.att, def: L11.def,
+      blurb: 'The Welsh game named in a 1587 manuscript. The king runs for any edge. The original rules are lost, so this is a modern reconstruction.'
+    }
+  };
+  const KEYS = ['copenhagen', 'brandubh', 'tablut', 'tawlbwrdd'];
+
+  let key = 'copenhagen', V, N, SZ, L, THRONE, TR;
+  let RESTRICTED, HCORNER, ESCAPE, GUARDS, CORNERS;
+  let B, KP, nodes = 0, deadline = 0;
+
+  function setVariant(k) {
+    key = VARIANTS[k] ? k : 'copenhagen';
+    V = VARIANTS[key]; N = V.n; SZ = N * N; L = N - 1;
+    THRONE = ((SZ - 1) / 2) | 0; TR = L / 2;
+    RESTRICTED = new Uint8Array(SZ); HCORNER = new Uint8Array(SZ); ESCAPE = new Uint8Array(SZ);
+    RESTRICTED[THRONE] = 1; GUARDS = []; CORNERS = [];
+    if (V.escape === 'corner') {
+      CORNERS = [0, L, L * N, L * N + L];
+      CORNERS.forEach(function (i) { RESTRICTED[i] = 1; HCORNER[i] = 1; ESCAPE[i] = 1; });
+      [[0, 0, 1, 1], [0, L, 1, -1], [L, 0, -1, 1], [L, L, -1, -1]].forEach(function (q) {
+        const cr = q[0], cc = q[1], dr = q[2], dc = q[3];
+        GUARDS.push(cr * N + cc + 2 * dc, (cr + 2 * dr) * N + cc, (cr + dr) * N + cc + dc);
+      });
+    } else {
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (r === 0 || r === L || c === 0 || c === L) ESCAPE[r * N + c] = 1;
+    }
+    B = new Int8Array(SZ); KP = THRONE;
+  }
+  setVariant('copenhagen');
+
+  function startBoard() {
+    const b = new Int8Array(SZ);
+    V.att.forEach(function (p) { b[p[0] * N + p[1]] = ATT; });
+    V.def.forEach(function (p) { b[p[0] * N + p[1]] = DEF; });
+    b[THRONE] = KING;
+    return b;
+  }
+  function info() {
+    return {
+      key: key, label: V.label, n: N, sz: SZ, throne: THRONE, escape: V.escape, kingCapture: V.kingCapture,
+      blurb: V.blurb, att: V.att.length, def: V.def.length, corners: CORNERS.slice()
+    };
+  }
+  function load(b) { B = b; KP = b.indexOf(KING); }
+  function owns(side, v) { return side === ATT ? v === ATT : (v === DEF || v === KING); }
+
+  function targetsFrom(i) {
+    const v = B[i], out = [], r0 = (i / N) | 0, c0 = i - r0 * N;
+    for (let d = 0; d < 4; d++) {
+      let r = r0 + DR[d], c = c0 + DC[d];
+      while (r >= 0 && r < N && c >= 0 && c < N) {
+        const s = r * N + c;
+        if (B[s] !== 0) break;
+        if (v === KING || !RESTRICTED[s]) out.push(s);
+        r += DR[d]; c += DC[d];
+      }
+    }
+    return out;
+  }
+  function genMoves(side) {
+    const mv = []; let kingMoves = null;
+    for (let i = 0; i < SZ; i++) {
+      const v = B[i];
+      if (!owns(side, v)) continue;
+      const t = targetsFrom(i);
+      if (v === KING) { kingMoves = t.map(function (s) { return i * SZ + s; }); }
+      else for (let k = 0; k < t.length; k++) mv.push(i * SZ + t[k]);
+    }
+    return kingMoves ? kingMoves.concat(mv) : mv;
+  }
+  function hostile(f, side) {
+    if (HCORNER[f]) return true;
+    const v = B[f];
+    if (v === 0) return f === THRONE;
+    return side === ATT ? v === ATT : (v === DEF || v === KING);
+  }
+  function kingCaptured(r, c) {
+    const kr = (KP / N) | 0, kc = KP - kr * N;
+    if (Math.abs(r - kr) + Math.abs(c - kc) !== 1) return false;
+    const nearThrone = Math.abs(kr - TR) + Math.abs(kc - TR) <= 1;
+    if (V.kingCapture === 'two' && !nearThrone) {
+      const orr = kr + (kr - r), oc = kc + (kc - c);
+      if (orr < 0 || orr >= N || oc < 0 || oc >= N) return false;
+      const o = orr * N + oc;
+      return B[o] === ATT || HCORNER[o] === 1;
+    }
+    for (let d = 0; d < 4; d++) {
+      const nr = kr + DR[d], nc = kc + DC[d];
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N) return false;
+      const n = nr * N + nc;
+      if (!(B[n] === ATT || n === THRONE)) return false;
+    }
+    return true;
+  }
+  function make(m) {
+    const from = (m / SZ) | 0, to = m - from * SZ;
+    const p = B[from], side = p === ATT ? ATT : DEF;
+    const oldK = KP;
+    B[from] = 0; B[to] = p;
+    if (p === KING) KP = to;
+    const r = (to / N) | 0, c = to - r * N;
+    let caps = null;
+    for (let d = 0; d < 4; d++) {
+      const nr = r + DR[d], nc = c + DC[d];
+      if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+      const n = nr * N + nc, v = B[n];
+      if (v === 0) continue;
+      if (side === ATT ? v !== DEF : v !== ATT) continue;
+      const fr = nr + DR[d], fc = nc + DC[d];
+      if (fr < 0 || fr >= N || fc < 0 || fc >= N) continue;
+      if (hostile(fr * N + fc, side)) { (caps || (caps = [])).push(n, v); B[n] = 0; }
+    }
+    let win = 0;
+    if (p === KING) { if (ESCAPE[to]) win = 2; }
+    else if (side === ATT && KP >= 0 && kingCaptured(r, c)) win = 1;
+    return { from: from, to: to, p: p, caps: caps, oldK: oldK, win: win };
+  }
+  function undo(inf) {
+    B[inf.to] = 0; B[inf.from] = inf.p; KP = inf.oldK;
+    const caps = inf.caps;
+    if (caps) for (let i = 0; i < caps.length; i += 2) B[caps[i]] = caps[i + 1];
+  }
+  function clearLine(r, c, dr, dc) {
+    r += dr; c += dc;
+    while (r >= 0 && r < N && c >= 0 && c < N) {
+      if (B[r * N + c] !== 0) return false;
+      r += dr; c += dc;
+    }
+    return true;
+  }
+  function openList() {
+    const out = [];
+    if (KP < 0) return out;
+    const kr = (KP / N) | 0, kc = KP - kr * N;
+    if (V.escape === 'corner') {
+      if (kr === 0 || kr === L) {
+        if (clearLine(kr, kc, 0, -1)) out.push(kr * N);
+        if (clearLine(kr, kc, 0, 1)) out.push(kr * N + L);
+      }
+      if (kc === 0 || kc === L) {
+        if (clearLine(kr, kc, -1, 0)) out.push(kc);
+        if (clearLine(kr, kc, 1, 0)) out.push(L * N + kc);
+      }
+    } else if (!ESCAPE[KP]) {
+      for (let d = 0; d < 4; d++) {
+        if (!clearLine(kr, kc, DR[d], DC[d])) continue;
+        let r = kr, c = kc;
+        for (;;) {
+          const nr = r + DR[d], nc = c + DC[d];
+          if (nr < 0 || nr > L || nc < 0 || nc > L) break;
+          r = nr; c = nc;
+        }
+        out.push(r * N + c);
+      }
+    }
+    return out;
+  }
+  function evaluate() {
+    let att = 0, def = 0;
+    for (let i = 0; i < SZ; i++) { const v = B[i]; if (v === ATT) att++; else if (v === DEF) def++; }
+    let s = def * 260 - att * 110;
+    const kr = (KP / N) | 0, kc = KP - kr * N;
+    const open = openList().length;
+    s += open * 700;
+    if (open > 1) s += 4000;
+    if (V.escape === 'corner') s -= (Math.min(kr, L - kr) + Math.min(kc, L - kc)) * 22;
+    else s -= Math.min(kr, L - kr, kc, L - kc) * 60;
+    for (let d = 0; d < 4; d++) {
+      const nr = kr + DR[d], nc = kc + DC[d];
+      if (nr >= 0 && nr < N && nc >= 0 && nc < N && B[nr * N + nc] === ATT) s -= 90;
+    }
+    for (let g = 0; g < GUARDS.length; g++) if (B[GUARDS[g]] === ATT) s -= 60;
+    return s;
+  }
+  function search(depth, alpha, beta, side, ply) {
+    if ((++nodes & 1023) === 0 && Date.now() > deadline) throw TIMEOUT;
+    if (depth === 0) return evaluate();
+    const moves = genMoves(side);
+    if (moves.length === 0) return side === DEF ? -WIN + ply : WIN - ply;
+    const max = side === DEF, opp = side === ATT ? DEF : ATT;
+    let best = max ? -Infinity : Infinity;
+    for (let k = 0; k < moves.length; k++) {
+      const inf = make(moves[k]);
+      let sc;
+      if (inf.win === 2) sc = WIN - ply - 1;
+      else if (inf.win === 1) sc = -WIN + ply + 1;
+      else sc = search(depth - 1, alpha, beta, opp, ply + 1);
+      undo(inf);
+      if (max) { if (sc > best) best = sc; if (best > alpha) alpha = best; }
+      else { if (sc < best) best = sc; if (best < beta) beta = best; }
+      if (alpha >= beta) break;
+    }
+    return best;
+  }
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+  }
+  function best(b, side, level) {
+    const cfg = LEVELS[level] || LEVELS.medium;
+    load(b.slice());
+    let moves = genMoves(side);
+    if (!moves.length) return null;
+    shuffle(moves);
+    const opp = side === ATT ? DEF : ATT;
+    deadline = Date.now() + cfg.ms; nodes = 0;
+    let bestMove = moves[0];
+    try {
+      for (let depth = 1; depth <= cfg.depth; depth++) {
+        let iterBest = null, iterScore = side === DEF ? -Infinity : Infinity;
+        let alpha = -Infinity, beta = Infinity;
+        const sc = [];
+        for (let k = 0; k < moves.length; k++) {
+          const inf = make(moves[k]);
+          let s;
+          if (inf.win === 2) s = WIN;
+          else if (inf.win === 1) s = -WIN;
+          else s = search(depth - 1, alpha, beta, opp, 1);
+          undo(inf);
+          sc.push(s);
+          const noisy = s + (cfg.noise ? (Math.random() - 0.5) * 2 * cfg.noise : 0);
+          if (side === DEF ? noisy > iterScore : noisy < iterScore) { iterScore = noisy; iterBest = moves[k]; }
+          if (!cfg.noise) {
+            if (side === DEF) { if (s > alpha) alpha = s; } else { if (s < beta) beta = s; }
+          }
+        }
+        bestMove = iterBest;
+        const idx = moves.map(function (_, i) { return i; });
+        idx.sort(function (x, y) { return side === DEF ? sc[y] - sc[x] : sc[x] - sc[y]; });
+        moves = idx.map(function (i) { return moves[i]; });
+      }
+    } catch (e) { if (e !== TIMEOUT) throw e; }
+    const from = (bestMove / SZ) | 0;
+    return { from: from, to: bestMove - from * SZ };
+  }
+  function play(b, from, to) {
+    load(b);
+    if (B[from] === 0) return null;
+    if (targetsFrom(from).indexOf(to) < 0) return null;
+    const inf = make(from * SZ + to);
+    const caps = [];
+    if (inf.caps) for (let i = 0; i < inf.caps.length; i += 2) caps.push(inf.caps[i]);
+    return { caps: caps, win: inf.win };
+  }
+  return {
+    ATT: ATT, DEF: DEF, KING: KING,
+    keys: KEYS,
+    variants: VARIANTS,
+    setVariant: setVariant,
+    info: info,
+    startBoard: startBoard,
+    targets: function (b, i) { load(b); return targetsFrom(i); },
+    hasMoves: function (b, side) { load(b); return genMoves(side).length > 0; },
+    openSquares: function (b) { load(b); return openList(); },
+    play: play,
+    best: best
+  };
+})();
+// ==ENGINE-END==
+
+(function () {
+  const $ = function (id) { return document.getElementById(id); };
+  const boardEl = $('board');
+  const FILES = 'abcdefghijk';
+  const SVG = {
+    1: '<svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="50,7 93,50 50,93 7,50"/><polygon class="in" points="50,33 67,50 50,67 33,50"/></svg>',
+    2: '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="41"/><circle class="in" cx="50" cy="50" r="17"/></svg>',
+    3: '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46"/><g transform="translate(23 21) scale(2.25)"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 9H5z"/><path d="M5 19h14v2H5z"/></g></svg>'
+  };
+  const KIND = { 1: 'att', 2: 'def', 3: 'king' };
+  const PNAME = { 1: 'attacker', 2: 'defender', 3: 'king' };
+  function mini(v) { return '<span class="mini ' + KIND[v] + '">' + SVG[v] + '</span>'; }
+  function name(s) { return s === 1 ? 'Attackers' : 'Defenders'; }
+  function ownedBy(side, v) { return side === 1 ? v === 1 : (v === 2 || v === 3); }
+  function selected(n) { return document.querySelector('input[name=' + n + ']:checked').value; }
+
+  Tafl.keys.forEach(function (k) {
+    const v = Tafl.variants[k], o = document.createElement('option');
+    o.value = k; o.textContent = v.label + ' ' + v.n + 'x' + v.n;
+    $('variant').appendChild(o);
+  });
+
+  let cells = [], N = 0, INFO = null, G = null;
+  function sq(i) { return FILES[i % N] + (N - ((i / N) | 0)); }
+
+  function buildBoard(n) {
+    N = n;
+    $('boardwrap').style.setProperty('--n', n);
+    boardEl.innerHTML = ''; $('ranks').innerHTML = ''; $('files').innerHTML = '';
+    cells = [];
+    for (let i = 0; i < n * n; i++) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.i = i;
+      boardEl.appendChild(b);
+      cells.push(b);
+    }
+    for (let r = 0; r < n; r++) {
+      const s = document.createElement('span'); s.textContent = n - r; $('ranks').appendChild(s);
+      const f = document.createElement('span'); f.textContent = FILES[r]; $('files').appendChild(f);
+    }
+  }
+
+  function rulesFor(info) {
+    const cornerMode = info.escape === 'corner';
+    const goal = cornerMode ? 'any corner' : 'any square on the edge of the board';
+    const lines = [
+      'Attackers (red diamonds, ' + info.att + ' pieces) move first and win by capturing the king.',
+      'Defenders (ivory rings, ' + info.def + ' pieces, plus the gold king) win when the king reaches ' + goal + '.',
+      'Every piece moves like a rook: any distance in a straight line over empty squares.',
+      cornerMode
+        ? 'Only the king may stop on a corner or on the throne in the center. Other pieces may pass over the empty throne.'
+        : 'Only the king may stop on the throne in the center. Other pieces may pass over the empty throne.',
+      'Capture a regular piece by closing it between two of your pieces on a row or column. Stepping between two enemy pieces is safe.',
+      cornerMode
+        ? 'Corners and the empty throne count as hostile to every regular piece. The king captures like any defender.'
+        : 'The empty throne counts as hostile to every regular piece. The king captures like any defender.',
+      info.kingCapture === 'two'
+        ? 'Away from the throne, two attackers on opposite sides capture the king. Next to the throne the king needs three attackers plus the throne, and on the throne all four.'
+        : 'The king falls when attackers hold all four sides. Next to the throne, three attackers and the throne are enough. The king cannot be captured on an edge.',
+      'A side with no legal move loses. The same position three times is a draw.'
+    ];
+    $('rulesList').innerHTML = lines.map(function (l) { return '<li>' + l + '</li>'; }).join('');
+    $('rulesNote').textContent = 'All four rulesets are modern reconstructions. Shieldwall captures, edge forts and the encirclement rule are not included.';
+  }
+
+  function snap(b, turn, last, note) {
+    return { b: b.slice(), turn: turn, last: last, note: note || '', key: b.join('') + turn };
+  }
+
+  function newGame() {
+    Tafl.setVariant($('variant').value);
+    INFO = Tafl.info();
+    if (INFO.n !== N) buildBoard(INFO.n);
+    cells.forEach(function (el) { el.dataset.k = ''; });
+    $('variantNote').textContent = INFO.blurb;
+    rulesFor(INFO);
+    const b = Tafl.startBoard();
+    G = {
+      b: b, turn: 1, mode: selected('mode'), human: +selected('side'), level: selected('level'),
+      over: false, msg: '', reason: '', last: null, note: '', sel: -1, tg: [],
+      hist: [snap(b, 1, null, '')], busy: false, token: 0
+    };
+    $('fs-side').hidden = $('fs-level').hidden = G.mode !== 'ai';
+    render();
+    maybeAI();
+  }
+
+  function finish(msg, reason) { G.over = true; G.msg = msg; G.reason = reason; }
+
+  function doMove(from, to) {
+    const mover = G.turn;
+    const res = Tafl.play(G.b, from, to);
+    if (!res) return;
+    G.last = [from, to]; G.sel = -1; G.tg = [];
+    G.note = name(mover) + ' ' + sq(from) + ' to ' + sq(to) + (res.caps.length ? ', captured ' + res.caps.length : '');
+    G.turn = mover === 1 ? 2 : 1;
+    const s = snap(G.b, G.turn, G.last, G.note);
+    G.hist.push(s);
+    if (res.win === 2) finish('Defenders win', INFO.escape === 'corner' ? 'The king reached a corner.' : 'The king reached the edge.');
+    else if (res.win === 1) finish('Attackers win', 'The king is captured.');
+    else if (!Tafl.hasMoves(G.b, G.turn)) finish(name(mover) + ' win', name(G.turn) + ' have no legal move.');
+    else if (G.hist.filter(function (h) { return h.key === s.key; }).length >= 3) finish('Draw', 'The same position has occurred three times.');
+    render();
+    maybeAI();
+  }
+
+  function maybeAI() {
+    if (G.over || G.mode !== 'ai' || G.turn === G.human) return;
+    const g = G, t = g.token;
+    g.busy = true;
+    render();
+    setTimeout(function () {
+      if (G !== g || g.token !== t) return;
+      const m = Tafl.best(g.b, g.turn, g.level);
+      g.busy = false;
+      if (m) doMove(m.from, m.to); else render();
+    }, 90);
+  }
+
+  function undo() {
+    if (!G || G.busy || G.hist.length < 2) return;
+    G.token++;
+    G.hist.pop();
+    if (G.mode === 'ai') {
+      while (G.hist.length > 1 && G.hist[G.hist.length - 1].turn !== G.human) G.hist.pop();
+    }
+    const s = G.hist[G.hist.length - 1];
+    G.b = s.b.slice(); G.turn = s.turn; G.last = s.last; G.note = s.note;
+    G.over = false; G.msg = ''; G.reason = ''; G.sel = -1; G.tg = [];
+    render();
+    maybeAI();
+  }
+
+  function render() {
+    const b = G.b;
+    const open = G.over ? [] : Tafl.openSquares(b);
+    let att = 0, def = 0;
+    for (let i = 0; i < b.length; i++) { if (b[i] === 1) att++; else if (b[i] === 2) def++; }
+    const edgeMode = INFO.escape === 'edge';
+    for (let i = 0; i < cells.length; i++) {
+      const el = cells[i], v = b[i];
+      const r = (i / N) | 0, c = i % N;
+      let cls = 'cell';
+      if (INFO.corners.indexOf(i) >= 0) cls += ' corner';
+      else if (i === INFO.throne) cls += ' throne';
+      else if (edgeMode && (r === 0 || c === 0 || r === N - 1 || c === N - 1)) cls += ' goal';
+      if (open.indexOf(i) >= 0) cls += ' open';
+      if (G.last && (G.last[0] === i || G.last[1] === i)) cls += ' last';
+      if (G.sel === i) cls += ' sel';
+      const isHint = G.tg.indexOf(i) >= 0;
+      if (isHint) cls += ' hint';
+      el.className = cls;
+      const moved = G.last && G.last[1] === i;
+      const key = v + (moved ? 'm' : '');
+      if (el.dataset.k !== key) {
+        el.dataset.k = key;
+        el.innerHTML = v ? '<span class="pc ' + KIND[v] + (moved ? ' moved' : '') + '">' + SVG[v] + '</span>' : '';
+      }
+      el.setAttribute('aria-label', sq(i) + (v ? ', ' + PNAME[v] : ', empty') + (isHint ? ', legal move' : ''));
+    }
+    boardEl.className = 'board' + (G.over ? ' over' : '') + (G.busy ? ' busy' : '');
+    $('statusBox').className = 'status' + (G.over ? ' over' : '');
+    $('turnIcon').className = 'mini ' + (G.turn === 1 ? 'att' : 'def');
+    $('turnIcon').innerHTML = SVG[G.turn];
+
+    let main, sub = '';
+    if (G.over) { main = G.msg; sub = G.reason; }
+    else if (G.busy) { main = name(G.turn) + ' are thinking'; }
+    else if (G.mode === 'ai') { main = 'Your move, ' + name(G.human).toLowerCase(); }
+    else { main = name(G.turn) + ' to move'; }
+    if (!G.over && open.length) {
+      const what = edgeMode ? (open.length > 1 ? open.length + ' edges' : 'the edge') : (open.length > 1 ? open.length + ' corners' : 'a corner');
+      sub = 'The king has a clear run to ' + what + '.';
+    }
+    $('statusMain').textContent = main;
+    $('statusSub').textContent = sub;
+    $('tally').innerHTML =
+      '<span>' + mini(1) + 'Attackers <b>' + att + '</b></span>' +
+      '<span>' + mini(2) + 'Defenders <b>' + def + '</b></span>' +
+      '<span>' + mini(3) + 'King</span>';
+    $('lastMove').textContent = G.note ? 'Last move: ' + G.note : 'Attackers open the game.';
+    $('undo').disabled = G.busy || G.hist.length < 2;
+  }
+
+  boardEl.addEventListener('click', function (e) {
+    const btn = e.target.closest('.cell');
+    if (!btn || !G || G.over || G.busy) return;
+    if (G.mode === 'ai' && G.turn !== G.human) return;
+    const i = +btn.dataset.i, v = G.b[i];
+    if (G.sel >= 0 && G.tg.indexOf(i) >= 0) { doMove(G.sel, i); return; }
+    if (v && ownedBy(G.turn, v) && i !== G.sel) { G.sel = i; G.tg = Tafl.targets(G.b, i); }
+    else { G.sel = -1; G.tg = []; }
+    render();
+  });
+  $('setup').addEventListener('change', newGame);
+  $('newgame').addEventListener('click', newGame);
+  $('undo').addEventListener('click', undo);
+  newGame();
+})();
+</script>
+
+</body></html>
